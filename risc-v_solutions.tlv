@@ -18,7 +18,7 @@
    // ----------------------------------
    
    // Include solutions.
-   m4_include_makerchip_hidden(['LF_workshop_solutions.private.tlv'])
+   // m4_include_makerchip_hidden(['LF_workshop_solutions.private.tlv'])
 
 \SV
    // Macro providing required top-level module definition, random
@@ -31,7 +31,7 @@
    //=================/
    
    // Specify which lab you are on by providing a macro argument...
-   m4+solution(RF_READ)
+   m4+solution(BR_REDIR)
    // ...from these:
    // Chapter 4:
    //    START, PC, IMEM, INSTR_TYPE, FIELDS, IMM, SUBSET_INSTRS,

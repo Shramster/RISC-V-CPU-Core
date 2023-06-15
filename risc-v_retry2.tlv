@@ -42,19 +42,16 @@
 \TLV
    
    $reset = *reset;
-   
-   // Program Counter
-   $next_pc[31:0] = $reset ? 32'b0 :
-                    $taken_br ? $br_tgt_pc:
-                    $pc + 32'd4;
+      // Program Counter
+   $next_pc[31:0] = $reset ? '0 :
+      $pc + 32'd4;
    $pc[31:0] = >>1$next_pc;
-   
    
    // Instruction Memory Macro
    `READONLY_MEM($pc, $$instr[31:0])
    
-   // Decoding Instructions
-   // Instruction Type INSTR_TYPE
+      // Decoding Instructions
+   // Instruction Type
    $is_r_instr = $instr[6:2] ==  5'b01011 ||
                  $instr[6:2] ==  5'b01100 ||
                  $instr[6:2] ==  5'b01110 ||
@@ -67,30 +64,32 @@
    $is_u_instr = $instr[6:2] ==? 5'b0x101;
    $is_j_instr = $instr[6:2] ==? 5'b11011;
    
-   // Extract instruction fields FIELDS
-   $opcode[6:0] = $instr[6:0];
-   $rd[4:0] = $instr[11:7];
+   // Extract instruction fields
    $funct3[2:0] = $instr[14:12];
+   $funct3_valid = $is_r_instr || $is_i_instr || $is_s_instr || $is_b_instr;
+   $imm_valid = $is_i_instr || $is_s_instr || $is_b_instr || $is_u_instr || $is_j_instr;
+  
+   $opcode[6:0] = $instr[6:0];
+   
+   $rd[4:0] = $instr[11:7];
+   $rd_valid = $is_r_instr || $is_i_instr || $is_u_instr || $is_j_instr;
+   
    $rs1[4:0] = $instr[19:15];
+   $rs1_valid = $is_r_instr || $is_i_instr || $is_s_instr || $is_b_instr;
+   
    $rs2[4:0] = $instr[24:20];
-   $funct7[6:0] = $instr[31:25];
+   $rs2_valid = $is_r_instr || $is_s_instr || $is_b_instr;
    
    $imm[31:0] = $is_i_instr ? { {21{$instr[31]}}, $instr[30:20] } :
                 $is_s_instr ? { {21{$instr[31]}}, $instr[30:25], $instr[11:7] } :
                 $is_b_instr ? { {20{$instr[31]}}, $instr[7], $instr[30:25], $instr[11:8], 1'b0 } :
                 $is_u_instr ? { $instr[31:12],   12'b0 } : 
-                $is_j_instr ? { {12{$instr[31]}}, $instr[19:12], $instr[20], $instr[30:21], 1'b0 } :
-                32'b0 ;
-
-   // Calculate instruction fields valids
-   $rd_valid = $is_r_instr || $is_i_instr || $is_u_instr || $is_j_instr;
-   $funct3_valid = $is_r_instr || $is_i_instr || $is_s_instr || $is_b_instr;
-   $rs1_valid = $is_r_instr || $is_i_instr || $is_s_instr || $is_b_instr;
-   $rs2_valid = $is_r_instr || $is_s_instr || $is_b_instr;
+                $is_j_instr ? { {12{$instr[31]}}, $instr[19:12], $instr[20], $instr[30:21], 1'b0 } : 32'b0 ;
+   
+   // IMM
+   $funct7[6:0] = $instr[31:25];
    $funct7_valid = $is_r_instr;
-   $imm_valid = $is_i_instr || $is_s_instr || $is_b_instr || $is_u_instr || $is_j_instr;
-  
-   // Instruction code decoding
+   
    $dec_bits[10:0] = {$instr[30],$funct3 ,$opcode};
    $is_beq   = $dec_bits ==? 11'bx_000_1100011;
    $is_bne   = $dec_bits ==? 11'bx_001_1100011;
@@ -100,8 +99,7 @@
    $is_bgeu  = $dec_bits ==? 11'bx_111_1100011;
    $is_addi  = $dec_bits ==? 11'bx_000_0010011;
    $is_add   = $dec_bits ==  11'b0_000_0110011;
-
-
+   
    $result[31:0] = $is_addi ? $imm + $src1_value :
                    $is_add  ? $src1_value + $src2_value :
                    32'b0;
@@ -109,18 +107,26 @@
                    
    $taken_br = $is_beq ? ($src1_value == $src2_value) :
                $is_bne ? ($src1_value != $src2_value) :
-               $is_blt ? (($src1_value < $src2_value) ^ ($src1_value[31] != $src2_value[31])) :
-               $is_bge ? (($src1_value >= $src2_value) ^ ($src1_value[31] != $src2_value[31])) :
+               $is_blt ? (($src1_value < $src2_value) ^ ($src1_value[31:0] != $src2_value[31:0])) :
+               $is_bge ? (($src1_value >= $src2_value) ^ ($src1_value[31:0] != $src2_value[31:0])) :
                $is_bltu ? ($src1_value < $src2_value) :
                $is_bgeu ? ($src1_value >= $src2_value) :
                1'b0;
    $br_tgt_pc[31:0] = $pc + $imm;
 
-   // Assert these to end simulation (before Makerchip cycle limit).
-   //   *passed = 1'b0;
-   *failed = *cyc_cnt > M4_MAX_CYC;
+
    
+   // YOUR CODE HERE
+   // ...
+   
+   
+   // Assert these to end simulation (before Makerchip cycle limit).
+   // m4+tb()
+   *passed = 1'b0;
+   *failed = *cyc_cnt > M4_MAX_CYC;
+   // RF
    m4+rf(32, 32, $reset, ($rd_valid && $rd != 5'b0), $rd, $result, $rs1_valid, $rs1, $src1_value, $rs2_valid, $rs2, $src2_value)
+
    //m4+rf(32, 32, $reset, $wr_en, $wr_index[4:0], $wr_data[31:0], $rd1_en, $rd1_index[4:0], $rd1_data, $rd2_en, $rd2_index[4:0], $rd2_data)
    //m4+dmem(32, 32, $reset, $addr[4:0], $wr_en, $wr_data[31:0], $rd_en, $rd_data)
    m4+cpu_viz()
